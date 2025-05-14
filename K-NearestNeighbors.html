@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>KNN 시뮬레이터</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    canvas { border: 1px solid black; background-color: #ffffff; cursor: crosshair; }
+    #controls { margin-top: 10px; }
+    #info { margin-top: 10px; font-weight: bold; }
+    input[type="number"] { width: 50px; }
+  </style>
+</head>
+<body>
+  <h1>K-최근접 이웃 (KNN) 시뮬레이터</h1>
+  <p>🟦 왼쪽 클릭: 클래스 A | 🟥 오른쪽 클릭: 클래스 B | ⬛ Shift+클릭: 테스트 점 추가</p>
+
+  <canvas id="canvas" width="600" height="400"></canvas>
+
+  <div id="legend" style="margin-top: 10px;"></div>
+
+  <div id="controls">
+    클래스 추가: <input type="text" id="newClass" placeholder="예: C">
+    <button onclick="addNewClass()">클래스 추가</button><br>
+    선택 클래스: <select id="currentClass">
+      <option value="A">A</option>
+      <option value="B">B</option>
+    </select><br>
+    <button onclick="generateRandomPoints('A')">클래스 A 랜덤 추가</button>
+    <button onclick="generateRandomPoints('B')">클래스 B 랜덤 추가</button><br>
+    K 값: <input type="number" id="kInput" value="3" min="1">
+    <button onclick="resetCanvas()">초기화</button>
+  </div>
+
+  <div id="info">KNN으로 분류된 결과는 점 옆에 라벨로 표시됩니다.</div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const kInput = document.getElementById('kInput');
+
+    const points = [];
+    const classColors = { A: 'blue', B: 'red' };
+    const tests = [];
+    let lastNearest = [];
+
+    canvas.addEventListener('click', (e) => {
+      const selected = document.getElementById('currentClass').value;
+      const clickType = selected === 'A' ? 'left' : (selected === 'B' ? 'right' : 'custom');
+      handleClick(e, clickType);
+    });
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      handleClick(e, 'right');
+    });
+
+    function handleClick(e, type) {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (e.shiftKey) {
+        const k = parseInt(kInput.value);
+        const label = classifyKNN(x, y, k);
+        tests.push({ x, y, label });
+      } else {
+        let label;
+        if (type === 'left') {
+          label = 'A';
+        } else if (type === 'right') {
+          label = 'B';
+        } else if (type === 'custom') {
+          label = document.getElementById('currentClass').value;
+        }
+        points.push({ x, y, label });
+
+        for (let i = 0; i < tests.length; i++) {
+          const test = tests[i];
+          const k = parseInt(kInput.value);
+          const newLabel = classifyKNN(test.x, test.y, k);
+          tests[i].label = newLabel;
+        }
+      }
+
+      draw();
+    }
+
+    function classifyKNN(x, y, k) {
+      const distances = points.map(p => ({
+        dist: Math.hypot(p.x - x, p.y - y),
+        label: p.label,
+        x: p.x,
+        y: p.y
+      })).sort((a, b) => a.dist - b.dist);
+      const kNearest = distances.slice(0, k);
+      const votes = {};
+      kNearest.forEach(p => {
+        votes[p.label] = (votes[p.label] || 0) + 1;
+      });
+      const majority = Object.entries(votes).sort((a, b) => b[1] - a[1])[0][0];
+      lastNearest = kNearest;
+      return majority;
+    }
+
+    function updateLegend() {
+      const legend = document.getElementById('legend');
+      legend.innerHTML = '';
+      for (const key in classColors) {
+        const span = document.createElement('span');
+        span.style.display = 'inline-block';
+        span.style.margin = '0 8px';
+        span.innerHTML = `<span style="display:inline-block;width:12px;height:12px;background:${classColors[key]};margin-right:4px;"></span>${key}`;
+        legend.appendChild(span);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let p of points) {
+        ctx.fillStyle = classColors[p.label] || 'gray';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (lastNearest.length > 0) {
+        ctx.strokeStyle = 'orange';
+        ctx.lineWidth = 1;
+        for (let p of lastNearest) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      for (let t of tests) {
+        ctx.fillStyle = '#32CD32';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = classColors[t.label] || 'gray';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(t.label, t.x + 8, t.y - 8);
+      }
+    }
+
+    function resetCanvas() {
+      points.length = 0;
+      tests.length = 0;
+      lastNearest = [];
+      draw();
+      updateLegend();
+    }
+
+    function generateRandomPoints(label) {
+      for (let i = 0; i < 10; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        points.push({ x, y, label });
+      }
+
+      for (let i = 0; i < tests.length; i++) {
+        const test = tests[i];
+        const k = parseInt(kInput.value);
+        const newLabel = classifyKNN(test.x, test.y, k);
+        tests[i].label = newLabel;
+      }
+
+      draw();
+    }
+
+    function addNewClass() {
+      const input = document.getElementById('newClass');
+      const select = document.getElementById('currentClass');
+      const rawLabel = input.value.trim();
+      const newLabel = /^[A-Z]+$/.test(rawLabel) ? rawLabel.toUpperCase() : '';
+      if (newLabel !== '' && !classColors[newLabel]) {
+        const totalClasses = Object.keys(classColors).length;
+        const hueOffset = totalClasses * 137.508;
+        const hue = Math.floor(hueOffset % 360);
+        const color = `hsl(${hue}, 70%, 50%)`;
+        classColors[newLabel] = color;
+        updateLegend();
+
+        const option = document.createElement('option');
+        option.value = newLabel;
+        option.textContent = newLabel;
+        select.appendChild(option);
+        select.value = newLabel;
+        alert(`${newLabel} 클래스가 추가되었습니다.`);
+
+        const controlsDiv = document.getElementById('controls');
+        const randBtn = document.createElement('button');
+        randBtn.textContent = `클래스 ${newLabel} 랜덤 추가`;
+        randBtn.onclick = () => generateRandomPoints(newLabel);
+        const refBtn = Array.from(controlsDiv.querySelectorAll('button')).find(btn => btn.textContent.includes('클래스 B 랜덤 추가'));
+        controlsDiv.insertBefore(randBtn, refBtn.nextSibling);
+      } else {
+        alert('클래스 이름은 영어 대문자만 허용되며, 중복될 수 없습니다.');
+      }
+    }
+
+    draw();
+    updateLegend();
+  </script>
+</body>
+</html>
