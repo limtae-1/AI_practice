@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>네트워크 시뮬레이터</title>
+  <style>
+    body { font-family: sans-serif; background: #f0f0f0; text-align: center; }
+    canvas { background: #fff; border: 2px solid #333; margin-top: 20px; cursor: pointer; }
+    button { margin: 6px; padding: 10px 20px; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <h1>🌐 네트워크 시뮬레이터</h1>
+  <p>좌클릭: 기기 생성 | 우클릭: 연결 | 모든 기기 연결 / 랜덤 연결 / 핑(Ping) 전송 가능</p>
+  <canvas id="canvas" width="900" height="550"></canvas><br>
+  <button onclick="connectAllDevices()">모든 기기 연결</button>
+  <button onclick="connectRandomDevices()">랜덤 연결</button>
+  <button onclick="sendPing()">핑 전송</button>
+  <button onclick="reset()">초기화</button>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let devices = [];
+    let links = [];
+    let selected = null;
+    let ping = null;
+    let deviceIdCounter = 1;
+
+    class Device {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.width = 40;
+        this.height = 30;
+        this.connected = [];
+        this.group = -1;
+        this.id = deviceIdCounter++;
+      }
+
+      draw() {
+        const color = this.group >= 0 ? "#4CAF50" : "#2196F3";
+        ctx.fillStyle = color;
+        ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+        ctx.strokeRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+
+        ctx.fillStyle = "#bbdefb";
+        ctx.fillRect(this.x - this.width / 2 + 5, this.y - this.height / 2 + 5, this.width - 10, this.height / 2 - 5);
+        ctx.strokeRect(this.x - this.width / 2 + 5, this.y - this.height / 2 + 5, this.width - 10, this.height / 2 - 5);
+
+        ctx.fillStyle = "#000";
+        ctx.font = "13px sans-serif";
+        ctx.fillText(`Device ${this.id}`, this.x - 25, this.y - this.height / 2 - 5);
+      }
+
+      isClicked(mx, my) {
+        return (
+          mx >= this.x - this.width / 2 &&
+          mx <= this.x + this.width / 2 &&
+          my >= this.y - this.height / 2 &&
+          my <= this.y + this.height / 2
+        );
+      }
+
+      connectTo(other) {
+        if (!this.connected.includes(other) && this !== other) {
+          this.connected.push(other);
+          other.connected.push(this);
+          links.push([this, other]);
+        }
+      }
+    }
+
+    function updateGroups() {
+      let visited = new Set();
+      let groupId = 0;
+      for (let d of devices) d.group = -1;
+      for (let d of devices) {
+        if (!visited.has(d) && d.connected.length > 0) {
+          dfsGroupAssign(d, groupId++, visited);
+        }
+      }
+    }
+
+    function dfsGroupAssign(device, groupId, visited) {
+      device.group = groupId;
+      visited.add(device);
+      for (let neighbor of device.connected) {
+        if (!visited.has(neighbor)) {
+          dfsGroupAssign(neighbor, groupId, visited);
+        }
+      }
+    }
+
+    function drawAll() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw links
+      for (let [a, b] of links) {
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = "#888";
+        ctx.stroke();
+      }
+
+      // Draw ping
+      if (ping) {
+        const t = ping.t;
+        const x = ping.from.x * (1 - t) + ping.to.x * t;
+        const y = ping.from.y * (1 - t) + ping.to.y * t;
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "red";
+        ctx.fill();
+      }
+
+      // Draw devices
+      for (let d of devices) {
+        d.draw();
+      }
+    }
+
+    canvas.addEventListener("contextmenu", function (e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      for (let d of devices) {
+        if (d.isClicked(mx, my)) {
+          if (!selected) {
+            selected = d;
+          } else {
+            selected.connectTo(d);
+            updateGroups();
+            selected = null;
+            drawAll();
+          }
+          return;
+        }
+      }
+    });
+
+    canvas.addEventListener("click", function (e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const newDevice = new Device(mx, my);
+      devices.push(newDevice);
+      drawAll();
+    });
+
+    function connectAllDevices() {
+      for (let i = 0; i < devices.length; i++) {
+        for (let j = i + 1; j < devices.length; j++) {
+          devices[i].connectTo(devices[j]);
+        }
+      }
+      updateGroups();
+      drawAll();
+    }
+
+    function connectRandomDevices() {
+      links = [];
+      for (let d of devices) d.connected = [];
+
+      for (let i = 0; i < devices.length; i++) {
+        for (let j = i + 1; j < devices.length; j++) {
+          if (Math.random() < 0.4) {
+            devices[i].connectTo(devices[j]);
+          }
+        }
+      }
+
+      updateGroups();
+      drawAll();
+    }
+
+    function sendPing() {
+      if (links.length === 0) return;
+
+      // 랜덤한 링크에서 핑을 보냄
+      const [from, to] = links[Math.floor(Math.random() * links.length)];
+      ping = { from, to, t: 0 };
+
+      const interval = setInterval(() => {
+        ping.t += 0.02;
+        if (ping.t >= 1) {
+          clearInterval(interval);
+          ping = null;
+        }
+        drawAll();
+      }, 16);
+    }
+
+    function reset() {
+      devices = [];
+      links = [];
+      selected = null;
+      ping = null;
+      deviceIdCounter = 1;
+      drawAll();
+    }
+
+    drawAll();
+  </script>
+</body>
+</html>
