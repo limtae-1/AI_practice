@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CNN 한눈에 시뮬레이터 (고1용)</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#111a33;
+      --panel2:#0f1730;
+      --line:#2a3a6a;
+      --text:#e9eefc;
+      --muted:#a7b2d6;
+      --accent:#7aa7ff;
+      --good:#2ee59d;
+      --warn:#ffd36b;
+      --bad:#ff6b8a;
+      --chip:#192553;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --r:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family:var(--sans); background: radial-gradient(1200px 700px at 15% 10%, #18265a 0%, var(--bg) 55%);
+      color:var(--text);
+    }
+    header{
+      padding:22px 18px 12px;
+      max-width:1200px; margin:0 auto;
+    }
+    .title{
+      display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;
+    }
+    .title h1{
+      margin:0; font-size:22px; letter-spacing:-.2px;
+    }
+    .badge{
+      font-size:12px; padding:6px 10px; border-radius:999px;
+      background:linear-gradient(90deg, rgba(122,167,255,.25), rgba(46,229,157,.18));
+      border:1px solid rgba(122,167,255,.25);
+      color:var(--text);
+    }
+    .sub{
+      margin:10px 0 0; color:var(--muted); line-height:1.45;
+      max-width: 980px;
+    }
+
+    .wrap{ max-width:1200px; margin:14px auto 40px; padding:0 18px; }
+
+    .tabs{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin: 10px 0 14px;
+    }
+    .tabbtn{
+      border:1px solid rgba(122,167,255,.25);
+      background: rgba(17,26,51,.55);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius:999px;
+      cursor:pointer;
+      transition:.15s;
+      font-size:13px;
+    }
+    .tabbtn.active{
+      background: rgba(122,167,255,.18);
+      border-color: rgba(122,167,255,.45);
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(17,26,51,.72), rgba(11,16,32,.55));
+      border:1px solid rgba(122,167,255,.18);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 14px 10px;
+      border-bottom:1px solid rgba(42,58,106,.65);
+      background: rgba(15,23,48,.55);
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .card .hd .h{
+      font-weight:700; font-size:14px;
+    }
+    .card .bd{ padding:14px; }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; }
+    .row > *{ flex:1; min-width: 140px; }
+
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input[type="number"], select{
+      width:100%;
+      padding:10px 10px;
+      border-radius: 12px;
+      border:1px solid rgba(122,167,255,.22);
+      background: rgba(15,23,48,.55);
+      color:var(--text);
+      outline:none;
+    }
+    input[type="range"]{ width:100%; }
+    .mini{
+      font-size:12px; color:var(--muted); margin-top:4px;
+      display:flex; justify-content:space-between; gap:10px;
+    }
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      background: rgba(25,37,83,.6);
+      border:1px solid rgba(122,167,255,.18);
+      color:var(--text); font-size:12px;
+    }
+    .chip b{ font-family:var(--mono); font-weight:700; }
+
+    .hr{
+      height:1px; background: rgba(42,58,106,.65);
+      margin:12px 0;
+    }
+
+    /* Diagram */
+    .flowTop{
+      display:grid; grid-template-columns: repeat(6, 1fr);
+      gap:10px; padding:12px 14px 0;
+      color:var(--muted); font-size:12px;
+    }
+    .flowTop div{
+      text-align:center;
+      padding:8px 8px;
+      border-radius: 12px;
+      background: rgba(15,23,48,.35);
+      border:1px dashed rgba(122,167,255,.18);
+    }
+
+    .diagram{
+      padding: 14px;
+      overflow:auto;
+    }
+    .lane{
+      display:flex; align-items:flex-end; gap:14px;
+      min-width: 980px;
+      padding-bottom: 12px;
+    }
+    .node{
+      width: 150px;
+      background: rgba(17,26,51,.55);
+      border:1px solid rgba(122,167,255,.18);
+      border-radius: 16px;
+      padding: 10px;
+      position:relative;
+    }
+    .node .t{
+      font-size:13px; font-weight:800; margin:0 0 8px;
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+    }
+    .node .shape{
+      font-family: var(--mono);
+      font-size:12px;
+      color: var(--text);
+      background: rgba(15,23,48,.55);
+      border:1px solid rgba(42,58,106,.75);
+      border-radius: 12px;
+      padding:8px;
+      line-height:1.35;
+      min-height: 56px;
+    }
+    .stacks{
+      display:flex; align-items:flex-end; gap:6px;
+      margin-top:10px;
+      height: 92px;
+    }
+    .stack{
+      width: 22px; border-radius: 8px;
+      border: 1px solid rgba(122,167,255,.28);
+      background: linear-gradient(180deg, rgba(122,167,255,.32), rgba(46,229,157,.18));
+      position:relative;
+    }
+    .stack.gray{
+      background: linear-gradient(180deg, rgba(233,238,252,.22), rgba(167,178,214,.12));
+      border-color: rgba(233,238,252,.22);
+    }
+    .stack.orange{
+      background: linear-gradient(180deg, rgba(255,211,107,.35), rgba(255,107,138,.16));
+      border-color: rgba(255,211,107,.3);
+    }
+    .hint{
+      font-size:11px; color:var(--muted); margin-top:8px; line-height:1.35;
+    }
+
+    .braces{
+      display:flex; justify-content:space-between; gap:10px;
+      margin-top: 10px;
+      padding: 0 14px 14px;
+    }
+    .brace{
+      flex:1;
+      border:1px solid rgba(122,167,255,.22);
+      border-radius: 14px;
+      padding:10px 12px;
+      background: rgba(15,23,48,.35);
+      color: var(--muted);
+      font-size:12px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .brace strong{ color:var(--text); }
+
+    /* Table */
+    table{
+      width:100%; border-collapse:separate; border-spacing:0;
+      overflow:hidden; border-radius: 14px;
+      border:1px solid rgba(122,167,255,.18);
+      background: rgba(17,26,51,.35);
+      font-size:13px;
+    }
+    th, td{
+      padding:10px 10px;
+      border-bottom:1px solid rgba(42,58,106,.55);
+      vertical-align:top;
+    }
+    th{
+      text-align:left; color: var(--muted); font-size:12px;
+      background: rgba(15,23,48,.55);
+    }
+    tr:last-child td{ border-bottom:none; }
+    .mono{ font-family: var(--mono); }
+    .kpi{
+      display:grid; grid-template-columns: repeat(3, 1fr);
+      gap:10px;
+    }
+    @media (max-width:980px){ .kpi{ grid-template-columns:1fr; } }
+    .k{
+      padding:12px;
+      border-radius: 16px;
+      background: rgba(15,23,48,.55);
+      border:1px solid rgba(122,167,255,.18);
+    }
+    .k .l{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .k .v{ font-family:var(--mono); font-size:14px; font-weight:800; }
+
+    /* Demo grid (Filter Demo) */
+    .demoWrap{
+      display:grid;
+      grid-template-columns: 380px 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width:980px){ .demoWrap{ grid-template-columns:1fr; } }
+
+    .canvasGrid{
+      display:grid; gap:6px;
+      user-select:none;
+      touch-action:none;
+    }
+    .cell{
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      border:1px solid rgba(122,167,255,.18);
+      background: rgba(233,238,252,.08);
+      cursor:pointer;
+      transition: .05s;
+    }
+    .cell.on{ background: rgba(122,167,255,.55); border-color: rgba(122,167,255,.55); }
+    .cell.hl{ outline: 2px solid rgba(255,211,107,.9); outline-offset: 0px; }
+    .cell.outHL{ outline: 2px solid rgba(46,229,157,.9); outline-offset: 0px; }
+
+    .btn{
+      border:1px solid rgba(122,167,255,.25);
+      background: rgba(17,26,51,.55);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-size:13px;
+      transition:.15s;
+    }
+    .btn:hover{ background: rgba(122,167,255,.12); }
+    .btn.good{ border-color: rgba(46,229,157,.35); }
+    .btn.warn{ border-color: rgba(255,211,107,.35); }
+
+    .note{
+      color: var(--muted);
+      font-size:12px; line-height:1.45;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <h1>🧠 CNN 한눈에 시뮬레이터 (고1용)</h1>
+    <div class="badge">GitHub Pages로 바로 배포 · 서버/DB 불필요</div>
+  </div>
+  <p class="sub">
+    왼쪽에서 값(입력 크기, 커널, 스트라이드, 패딩, 필터 수, 풀링)을 바꾸면
+    <b>출력 shape와 파라미터 수</b>가 즉시 갱신됩니다.  
+    두 번째 탭에서는 8×8 입력을 직접 그려서 <b>Conv → MaxPool</b>이 실제로 어떻게 변환되는지 확인할 수 있어요.
+  </p>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tabbtn active" data-tab="shape">① 한 화면 Shape 시뮬레이터</button>
+    <button class="tabbtn" data-tab="demo">② Conv/Pool 실제 데모(그리기)</button>
+  </div>
+
+  <!-- TAB 1: SHAPE SIM -->
+  <section id="tab-shape">
+    <div class="grid">
+      <!-- Controls -->
+      <div class="card">
+        <div class="hd">
+          <div class="h">설정 (바꾸면 즉시 반영)</div>
+          <div class="chip">Mode: <b id="modeLabel">2D(이미지)</b></div>
+        </div>
+        <div class="bd">
+          <div class="row">
+            <div>
+              <label>입력 타입</label>
+              <select id="mode">
+                <option value="2d" selected>2D (이미지: H×W×C)</option>
+                <option value="1d">1D (시계열: L×C)</option>
+              </select>
+              <div class="mini"><span>수업 기본: 이미지</span><span class="mono">H×W×C</span></div>
+            </div>
+            <div>
+              <label>Conv+Pool 블록 개수</label>
+              <select id="blocks">
+                <option value="1">1 블록</option>
+                <option value="2" selected>2 블록 (첨부 그림 느낌)</option>
+              </select>
+              <div class="mini"><span>Convolution→Pooling 반복</span><span class="mono">1~2</span></div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <!-- Input size -->
+          <div id="input2d">
+            <div class="row">
+              <div>
+                <label>입력 높이 H</label>
+                <input type="number" id="H" min="4" max="512" value="64"/>
+              </div>
+              <div>
+                <label>입력 너비 W</label>
+                <input type="number" id="W" min="4" max="512" value="64"/>
+              </div>
+              <div>
+                <label>채널 C</label>
+                <input type="number" id="C" min="1" max="64" value="3"/>
+              </div>
+            </div>
+          </div>
+
+          <div id="input1d" style="display:none;">
+            <div class="row">
+              <div>
+                <label>길이 L</label>
+                <input type="number" id="L" min="8" max="5000" value="128"/>
+              </div>
+              <div>
+                <label>채널 C</label>
+                <input type="number" id="C1" min="1" max="64" value="1"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <!-- Conv params (block A) -->
+          <div class="chip" style="margin-bottom:10px;">Block A (Conv → Pool)</div>
+          <div class="row">
+            <div>
+              <label>커널 크기 K</label>
+              <input type="number" id="K" min="1" max="11" value="3"/>
+              <div class="mini"><span>보통 3 또는 5</span><span class="mono">K×K</span></div>
+            </div>
+            <div>
+              <label>스트라이드 S</label>
+              <input type="number" id="S" min="1" max="5" value="1"/>
+              <div class="mini"><span>한 칸씩/두 칸씩</span><span class="mono">S</span></div>
+            </div>
+            <div>
+              <label>패딩</label>
+              <select id="pad">
+                <option value="valid" selected>valid (패딩 없음)</option>
+                <option value="same">same (크기 유지 느낌)</option>
+              </select>
+              <div class="mini"><span>출력 크기에 영향</span><span class="mono">P</span></div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px;">
+            <div>
+              <label>필터(특징맵) 개수 F</label>
+              <input type="number" id="F" min="1" max="256" value="16"/>
+              <div class="mini"><span>몇 가지 특징을 찾나</span><span class="mono">F</span></div>
+            </div>
+            <div>
+              <label>Bias 사용</label>
+              <select id="bias">
+                <option value="1" selected>사용</option>
+                <option value="0">미사용</option>
+              </select>
+              <div class="mini"><span>파라미터 수에 영향</span><span class="mono">+b</span></div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <!-- Pool params (block A) -->
+          <div class="row">
+            <div>
+              <label>MaxPool 크기 Pk</label>
+              <input type="number" id="Pk" min="1" max="5" value="2"/>
+              <div class="mini"><span>보통 2</span><span class="mono">Pk×Pk</span></div>
+            </div>
+            <div>
+              <label>MaxPool 스트라이드 Ps</label>
+              <input type="number" id="Ps" min="1" max="5" value="2"/>
+              <div class="mini"><span>보통 Pk와 동일</span><span class="mono">Ps</span></div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <!-- Dense -->
+          <div class="chip" style="margin-bottom:10px;">Classification (Flatten → Dense → Output)</div>
+          <div class="row">
+            <div>
+              <label>Dense 유닛 수</label>
+              <input type="number" id="dense" min="2" max="1024" value="64"/>
+            </div>
+            <div>
+              <label>Dropout(설명용)</label>
+              <select id="drop">
+                <option value="0">없음</option>
+                <option value="0.25" selected>0.25</option>
+                <option value="0.5">0.50</option>
+              </select>
+            </div>
+            <div>
+              <label>클래스(출력) 수</label>
+              <input type="number" id="classes" min="2" max="1000" value="10"/>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="note">
+            💡 <b>수업 팁</b>:
+            “합성곱은 <b>특징을 찾는 렌즈</b>(필터) 여러 개, 풀링은 <b>중요한 값만 남기는 압축</b>,
+            Flatten은 <b>줄 세우기</b>, Dense는 <b>최종 판단</b>”이라고 설명하면 이해가 빨라요.
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagram + Results -->
+      <div class="card">
+        <div class="hd">
+          <div class="h">CNN 흐름(한 화면)</div>
+          <div class="row" style="flex:0; gap:8px;">
+            <span class="chip">Feature Extraction</span>
+            <span class="chip">Classification</span>
+          </div>
+        </div>
+
+        <div class="flowTop">
+          <div>Input</div>
+          <div>Convolution</div>
+          <div>Pooling</div>
+          <div>Flatten</div>
+          <div>Fully Connected</div>
+          <div>Output</div>
+        </div>
+
+        <div class="diagram">
+          <div class="lane" id="lane">
+            <!-- Nodes injected by JS -->
+          </div>
+
+          <div class="kpi" style="margin-top:8px;">
+            <div class="k">
+              <div class="l">전체 파라미터 수(대략)</div>
+              <div class="v" id="kTotal">-</div>
+            </div>
+            <div class="k">
+              <div class="l">Conv 파라미터(블록별)</div>
+              <div class="v" id="kConv">-</div>
+            </div>
+            <div class="k">
+              <div class="l">Flatten 길이</div>
+              <div class="v" id="kFlat">-</div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div style="overflow:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:160px;">레이어</th>
+                  <th>출력 Shape</th>
+                  <th style="width:220px;">설명(학생용 한줄)</th>
+                </tr>
+              </thead>
+              <tbody id="trace"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="braces">
+          <div class="brace"><strong>Feature Extraction</strong> (Conv/Pool로 특징 뽑기)</div>
+          <div class="brace"><strong>Classification</strong> (Flatten/Dense로 판단)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: DEMO -->
+  <section id="tab-demo" style="display:none;">
+    <div class="demoWrap">
+      <!-- Demo controls -->
+      <div class="card">
+        <div class="hd">
+          <div class="h">② Conv/Pool 실제 데모</div>
+          <div class="chip">8×8 입력을 직접 그려보세요</div>
+        </div>
+        <div class="bd">
+          <div class="row">
+            <button class="btn good" id="clearBtn">전체 지우기</button>
+            <button class="btn warn" id="presetBtn">프리셋(십자) 넣기</button>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="row">
+            <div>
+              <label>커널(3×3) 선택</label>
+              <select id="kernelSel">
+                <option value="edge" selected>Edge(경계)</option>
+                <option value="blur">Blur(평균)</option>
+                <option value="sharpen">Sharpen(선명)</option>
+              </select>
+              <div class="mini"><span>필터 = 특징 찾는 렌즈</span><span class="mono">3×3</span></div>
+            </div>
+            <div>
+              <label>Conv 패딩</label>
+              <select id="demoPad">
+                <option value="valid" selected>valid</option>
+                <option value="same">same</option>
+              </select>
+              <div class="mini"><span>출력 크기 달라짐</span><span class="mono">P</span></div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div>
+            <label>“어떤 출력 위치를 계산 중인지” 보기</label>
+            <input type="range" id="posSlider" min="0" max="0" value="0"/>
+            <div class="mini">
+              <span>노란색: 입력에서 보는 영역</span>
+              <span>초록색: 출력의 해당 칸</span>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="note">
+            ✅ 이 데모는 단순화를 위해 <b>그레이스케일(1채널)</b>로 계산합니다.  
+            실제 CNN에서는 필터가 채널(C)까지 포함해서 계산되고, 필터(F) 개수만큼 특징맵이 여러 장 나옵니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo grids -->
+      <div class="card">
+        <div class="hd">
+          <div class="h">입력 → Conv → MaxPool 결과</div>
+          <div class="chip">클릭/드래그로 픽셀 on/off</div>
+        </div>
+        <div class="bd">
+          <div class="row" style="align-items:flex-start;">
+            <div style="min-width:260px;">
+              <div class="chip" style="margin-bottom:10px;">Input (8×8)</div>
+              <div id="inGrid" class="canvasGrid"></div>
+            </div>
+
+            <div style="flex:1;">
+              <div class="row" style="gap:14px;">
+                <div style="min-width:260px;">
+                  <div class="chip" style="margin-bottom:10px;">Conv Output</div>
+                  <div id="convGrid" class="canvasGrid"></div>
+                </div>
+                <div style="min-width:260px;">
+                  <div class="chip" style="margin-bottom:10px;">MaxPool(2×2)</div>
+                  <div id="poolGrid" class="canvasGrid"></div>
+                </div>
+              </div>
+
+              <div class="hr"></div>
+              <div class="note" id="demoInfo">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // ---------- Utilities ----------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const int = (x) => Math.floor(Number(x));
+  const fmt = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  function convOutValid(n, k, s, p){
+    // floor((n + 2p - k)/s) + 1
+    return Math.floor((n + 2*p - k)/s) + 1;
+  }
+  function samePad(k){
+    // typical SAME for odd k
+    return Math.floor(k/2);
+  }
+  function safeShape(x){ return (x>0 && Number.isFinite(x)) ? x : 0; }
+
+  // ---------- TAB switching ----------
+  const tabBtns = [...document.querySelectorAll(".tabbtn")];
+  const tabShape = document.getElementById("tab-shape");
+  const tabDemo  = document.getElementById("tab-demo");
+
+  tabBtns.forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      tabBtns.forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const t = btn.dataset.tab;
+      tabShape.style.display = (t==="shape") ? "block" : "none";
+      tabDemo.style.display  = (t==="demo")  ? "block" : "none";
+      if(t==="demo"){ renderDemo(); }
+    });
+  });
+
+  // ---------- SHAPE SIM ----------
+  const els = {
+    mode: document.getElementById("mode"),
+    blocks: document.getElementById("blocks"),
+    H: document.getElementById("H"),
+    W: document.getElementById("W"),
+    C: document.getElementById("C"),
+    L: document.getElementById("L"),
+    C1: document.getElementById("C1"),
+    K: document.getElementById("K"),
+    S: document.getElementById("S"),
+    pad: document.getElementById("pad"),
+    F: document.getElementById("F"),
+    bias: document.getElementById("bias"),
+    Pk: document.getElementById("Pk"),
+    Ps: document.getElementById("Ps"),
+    dense: document.getElementById("dense"),
+    drop: document.getElementById("drop"),
+    classes: document.getElementById("classes"),
+  };
+
+  const modeLabel = document.getElementById("modeLabel");
+  const input2d = document.getElementById("input2d");
+  const input1d = document.getElementById("input1d");
+
+  const lane = document.getElementById("lane");
+  const trace = document.getElementById("trace");
+  const kTotal = document.getElementById("kTotal");
+  const kConv  = document.getElementById("kConv");
+  const kFlat  = document.getElementById("kFlat");
+
+  function layerNode(title, shapeText, stacks){
+    const n = document.createElement("div");
+    n.className = "node";
+
+    const t = document.createElement("div");
+    t.className = "t";
+    t.innerHTML = `<span>${title}</span><span class="chip" style="padding:4px 8px; font-size:11px;">shape</span>`;
+    n.appendChild(t);
+
+    const sh = document.createElement("div");
+    sh.className = "shape";
+    sh.innerHTML = `<span class="mono">${shapeText}</span>`;
+    n.appendChild(sh);
+
+    const st = document.createElement("div");
+    st.className = "stacks";
+    stacks.forEach(s=>{
+      const b = document.createElement("div");
+      b.className = "stack " + (s.color||"");
+      b.style.height = s.h + "px";
+      st.appendChild(b);
+    });
+    n.appendChild(st);
+
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = (title.includes("Conv")) ? "필터(F)만큼 특징맵이 생김" :
+                      (title.includes("Pool")) ? "크기는 줄고 핵심만 남김" :
+                      (title.includes("Flatten")) ? "3D를 1D로 줄 세움" :
+                      (title.includes("Dense")) ? "최종 판단에 가까운 층" :
+                      (title.includes("Output")) ? "클래스 확률/점수" :
+                      "입력 데이터(이미지/시계열)";
+    n.appendChild(hint);
+
+    return n;
+  }
+
+  function buildStacks(depth, baseH, colorClass){
+    // depth: how many "sheets" to suggest, capped visually
+    const d = clamp(depth, 1, 6);
+    const arr = [];
+    for(let i=0;i<d;i++){
+      arr.push({ h: clamp(baseH - i*8, 18, 92), color: colorClass });
+    }
+    return arr;
+  }
+
+  function explainRow(name, shape, exp){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><b>${name}</b></td>
+      <td class="mono">${shape}</td>
+      <td>${exp}</td>
+    `;
+    return tr;
+  }
+
+  function computeAndRender(){
+    const mode = els.mode.value;
+    const blocks = int(els.blocks.value);
+
+    // read inputs
+    let H = int(els.H.value), W = int(els.W.value), C = int(els.C.value);
+    let L = int(els.L.value), C1 = int(els.C1.value);
+
+    let K = int(els.K.value), S = int(els.S.value);
+    let padMode = els.pad.value;
+    let F = int(els.F.value);
+    let useBias = int(els.bias.value) === 1;
+
+    let Pk = int(els.Pk.value), Ps = int(els.Ps.value);
+
+    let dense = int(els.dense.value);
+    let classes = int(els.classes.value);
+
+    // sanitize
+    K = clamp(K, 1, 11);
+    if (K % 2 === 0) K = K - 1; // keep odd for easy SAME
+    els.K.value = K;
+
+    S = clamp(S, 1, 5);
+    Pk = clamp(Pk, 1, 5);
+    Ps = clamp(Ps, 1, 5);
+
+    const pad = (padMode === "same") ? samePad(K) : 0;
+
+    // outputs
+    lane.innerHTML = "";
+    trace.innerHTML = "";
+
+    let totalParams = 0;
+    let convParamsEach = 0;
+
+    if(mode === "2d"){
+      modeLabel.textContent = "2D(이미지)";
+      input2d.style.display = "block";
+      input1d.style.display = "none";
+
+      // Block A
+      let outH1 = convOutValid(H, K, S, pad);
+      let outW1 = convOutValid(W, K, S, pad);
+      outH1 = safeShape(outH1); outW1 = safeShape(outW1);
+
+      // Pool A
+      let pH1 = convOutValid(outH1, Pk, Ps, 0);
+      let pW1 = convOutValid(outW1, Pk, Ps, 0);
+      pH1 = safeShape(pH1); pW1 = safeShape(pW1);
+
+      // Conv params (2D): (K*K*C + bias) * F
+      convParamsEach = (K*K*C + (useBias?1:0)) * F;
+      totalParams += convParamsEach;
+
+      // Block B (optional) takes channels=F
+      let outH2=0,outW2=0,pH2=0,pW2=0;
+      if(blocks === 2){
+        const Cb = F;
+        outH2 = convOutValid(pH1, K, S, pad);
+        outW2 = convOutValid(pW1, K, S, pad);
+        outH2 = safeShape(outH2); outW2 = safeShape(outW2);
+
+        pH2 = convOutValid(outH2, Pk, Ps, 0);
+        pW2 = convOutValid(outW2, Pk, Ps, 0);
+        pH2 = safeShape(pH2); pW2 = safeShape(pW2);
+
+        const convParamsB = (K*K*Cb + (useBias?1:0)) * F;
+        totalParams += convParamsB;
+      }
+
+      // Flatten input shape
+      const flatH = (blocks===2) ? pH2 : pH1;
+      const flatW = (blocks===2) ? pW2 : pW1;
+      const flatC = F;
+      const flatLen = safeShape(flatH) * safeShape(flatW) * safeShape(flatC);
+
+      // Dense params
+      const denseParams = (flatLen + 1) * dense;     // +bias
+      const outParams   = (dense + 1) * classes;     // +bias
+      totalParams += denseParams + outParams;
+
+      // Build diagram nodes
+      lane.appendChild(layerNode("Input", `${H}×${W}×${C}`, buildStacks(C, 86, "gray")));
+      lane.appendChild(layerNode("Conv", `${outH1}×${outW1}×${F}`, buildStacks(F, 86, "")));
+      lane.appendChild(layerNode("MaxPool", `${pH1}×${pW1}×${F}`, buildStacks(F, 74, "orange")));
+
+      if(blocks===2){
+        lane.appendChild(layerNode("Conv", `${outH2}×${outW2}×${F}`, buildStacks(F, 86, "")));
+        lane.appendChild(layerNode("MaxPool", `${pH2}×${pW2}×${F}`, buildStacks(F, 74, "orange")));
+      }
+
+      lane.appendChild(layerNode("Flatten", `${flatLen}`, buildStacks(3, 60, "gray")));
+      lane.appendChild(layerNode("Dense", `${dense}`, buildStacks(3, 70, "")));
+      lane.appendChild(layerNode("Output", `${classes}`, buildStacks(2, 52, "orange")));
+
+      // Trace table
+      trace.appendChild(explainRow("Input", `${H}×${W}×${C}`, "원본 이미지(픽셀)"));
+      trace.appendChild(explainRow("Conv", `${outH1}×${outW1}×${F}`,
+        `필터 ${F}개로 특징을 찾음 (K=${K}, S=${S}, pad=${padMode})`));
+      trace.appendChild(explainRow("MaxPool", `${pH1}×${pW1}×${F}`,
+        `중요한 값만 남기며 압축 (Pk=${Pk}, Ps=${Ps})`));
+      if(blocks===2){
+        trace.appendChild(explainRow("Conv", `${outH2}×${outW2}×${F}`, "한 번 더 특징을 뽑아서 더 추상화"));
+        trace.appendChild(explainRow("MaxPool", `${pH2}×${pW2}×${F}`, "한 번 더 압축"));
+      }
+      trace.appendChild(explainRow("Flatten", `${flatLen}`, "특징맵을 1줄 벡터로 줄 세움"));
+      trace.appendChild(explainRow("Dense", `${dense}`, "최종 분류를 위한 판단 층"));
+      trace.appendChild(explainRow("Output", `${classes}`, "각 클래스 점수/확률"));
+
+      // KPIs
+      kTotal.textContent = fmt(totalParams);
+      kConv.textContent  = (blocks===2)
+        ? `${fmt(convParamsEach)} + ${fmt((K*K*F + (useBias?1:0))*F)}`
+        : `${fmt(convParamsEach)}`;
+      kFlat.textContent  = fmt(flatLen);
+
+    } else {
+      modeLabel.textContent = "1D(시계열)";
+      input2d.style.display = "none";
+      input1d.style.display = "block";
+
+      const Cx = C1;
+      const pad1 = (padMode === "same") ? samePad(K) : 0;
+
+      let outL1 = convOutValid(L, K, S, pad1);
+      outL1 = safeShape(outL1);
+
+      let pL1 = convOutValid(outL1, Pk, Ps, 0);
+      pL1 = safeShape(pL1);
+
+      convParamsEach = (K*Cx + (useBias?1:0)) * F;
+      totalParams += convParamsEach;
+
+      let outL2=0,pL2=0;
+      if(blocks===2){
+        const Cb = F;
+        outL2 = convOutValid(pL1, K, S, pad1); outL2 = safeShape(outL2);
+        pL2   = convOutValid(outL2, Pk, Ps, 0); pL2 = safeShape(pL2);
+        totalParams += (K*Cb + (useBias?1:0)) * F;
+      }
+
+      const flatLen = safeShape((blocks===2)?pL2:pL1) * safeShape(F);
+      const denseParams = (flatLen + 1) * dense;
+      const outParams   = (dense + 1) * classes;
+      totalParams += denseParams + outParams;
+
+      lane.appendChild(layerNode("Input", `${L}×${Cx}`, buildStacks(Cx, 86, "gray")));
+      lane.appendChild(layerNode("Conv1D", `${outL1}×${F}`, buildStacks(F, 86, "")));
+      lane.appendChild(layerNode("MaxPool1D", `${pL1}×${F}`, buildStacks(F, 74, "orange")));
+      if(blocks===2){
+        lane.appendChild(layerNode("Conv1D", `${outL2}×${F}`, buildStacks(F, 86, "")));
+        lane.appendChild(layerNode("MaxPool1D", `${pL2}×${F}`, buildStacks(F, 74, "orange")));
+      }
+      lane.appendChild(layerNode("Flatten", `${flatLen}`, buildStacks(3, 60, "gray")));
+      lane.appendChild(layerNode("Dense", `${dense}`, buildStacks(3, 70, "")));
+      lane.appendChild(layerNode("Output", `${classes}`, buildStacks(2, 52, "orange")));
+
+      trace.appendChild(explainRow("Input", `${L}×${Cx}`, "시간 순서 데이터(센서/소리 등)"));
+      trace.appendChild(explainRow("Conv1D", `${outL1}×${F}`, `패턴을 찾음 (K=${K}, S=${S}, pad=${padMode})`));
+      trace.appendChild(explainRow("MaxPool1D", `${pL1}×${F}`, `중요한 값만 남기며 압축 (Pk=${Pk}, Ps=${Ps})`));
+      if(blocks===2){
+        trace.appendChild(explainRow("Conv1D", `${outL2}×${F}`, "한 번 더 패턴을 뽑아 추상화"));
+        trace.appendChild(explainRow("MaxPool1D", `${pL2}×${F}`, "한 번 더 압축"));
+      }
+      trace.appendChild(explainRow("Flatten", `${flatLen}`, "특징을 1줄 벡터로 줄 세움"));
+      trace.appendChild(explainRow("Dense", `${dense}`, "최종 분류를 위한 판단 층"));
+      trace.appendChild(explainRow("Output", `${classes}`, "각 클래스 점수/확률"));
+
+      kTotal.textContent = fmt(totalParams);
+      kConv.textContent  = (blocks===2)
+        ? `${fmt(convParamsEach)} + ${fmt((K*F + (useBias?1:0))*F)}`
+        : `${fmt(convParamsEach)}`;
+      kFlat.textContent  = fmt(flatLen);
+    }
+  }
+
+  // Bind events
+  Object.values(els).forEach(el=>{
+    el.addEventListener("input", computeAndRender);
+    el.addEventListener("change", computeAndRender);
+  });
+
+  // ---------- DEMO ----------
+  const N = 8; // input 8x8
+  let input = Array.from({length:N}, ()=>Array.from({length:N}, ()=>0));
+  let isDown = false;
+
+  const inGrid = document.getElementById("inGrid");
+  const convGrid = document.getElementById("convGrid");
+  const poolGrid = document.getElementById("poolGrid");
+  const kernelSel = document.getElementById("kernelSel");
+  const demoPad = document.getElementById("demoPad");
+  const posSlider = document.getElementById("posSlider");
+  const demoInfo = document.getElementById("demoInfo");
+  document.getElementById("clearBtn").addEventListener("click", ()=>{
+    input = Array.from({length:N}, ()=>Array.from({length:N}, ()=>0));
+    renderDemo();
+  });
+  document.getElementById("presetBtn").addEventListener("click", ()=>{
+    input = Array.from({length:N}, ()=>Array.from({length:N}, ()=>0));
+    const mid = Math.floor(N/2);
+    for(let i=1;i<N-1;i++){ input[mid][i]=1; input[i][mid]=1; }
+    renderDemo();
+  });
+  kernelSel.addEventListener("change", renderDemo);
+  demoPad.addEventListener("change", renderDemo);
+  posSlider.addEventListener("input", ()=> renderDemo(true));
+
+  function getKernel(name){
+    if(name==="blur"){
+      return [
+        [1/9,1/9,1/9],
+        [1/9,1/9,1/9],
+        [1/9,1/9,1/9],
+      ];
+    }
+    if(name==="sharpen"){
+      return [
+        [ 0,-1, 0],
+        [-1, 5,-1],
+        [ 0,-1, 0],
+      ];
+    }
+    // edge default
+    return [
+      [-1,-1,-1],
+      [-1, 8,-1],
+      [-1,-1,-1],
+    ];
+  }
+
+  function padInput2D(mat, p){
+    if(p===0) return mat.map(r=>r.slice());
+    const h = mat.length, w = mat[0].length;
+    const H2 = h + 2*p, W2 = w + 2*p;
+    const out = Array.from({length:H2}, ()=>Array.from({length:W2}, ()=>0));
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        out[y+p][x+p] = mat[y][x];
+      }
+    }
+    return out;
+  }
+
+  function conv2D(mat, ker, padMode){
+    const k = 3;
+    const p = (padMode==="same") ? 1 : 0;
+    const src = padInput2D(mat, p);
+    const h = src.length, w = src[0].length;
+    const oh = h - k + 1, ow = w - k + 1;
+    const out = Array.from({length:oh}, ()=>Array.from({length:ow}, ()=>0));
+
+    for(let y=0;y<oh;y++){
+      for(let x=0;x<ow;x++){
+        let sum = 0;
+        for(let dy=0;dy<k;dy++){
+          for(let dx=0;dx<k;dx++){
+            sum += src[y+dy][x+dx] * ker[dy][dx];
+          }
+        }
+        out[y][x] = sum;
+      }
+    }
+    return { out, p };
+  }
+
+  function maxPool2D(mat, pk=2, ps=2){
+    const h = mat.length, w = mat[0].length;
+    const oh = Math.floor((h - pk)/ps) + 1;
+    const ow = Math.floor((w - pk)/ps) + 1;
+    const out = Array.from({length:oh}, ()=>Array.from({length:ow}, ()=>0));
+    for(let y=0;y<oh;y++){
+      for(let x=0;x<ow;x++){
+        let m = -Infinity;
+        for(let dy=0;dy<pk;dy++){
+          for(let dx=0;dx<pk;dx++){
+            m = Math.max(m, mat[y*ps+dy][x*ps+dx]);
+          }
+        }
+        out[y][x] = m;
+      }
+    }
+    return out;
+  }
+
+  function normalizeForDisplay(mat){
+    // map values to 0..1 by min/max for nicer viewing
+    let mn=Infinity, mx=-Infinity;
+    mat.forEach(r=>r.forEach(v=>{ mn=Math.min(mn,v); mx=Math.max(mx,v); }));
+    if(mx===mn) return mat.map(r=>r.map(_=>0.5));
+    return mat.map(r=>r.map(v=>(v-mn)/(mx-mn)));
+  }
+
+  function buildGrid(container, mat, interactive=false){
+    container.innerHTML = "";
+    const h = mat.length, w = mat[0].length;
+    container.style.gridTemplateColumns = `repeat(${w}, 28px)`;
+    container.style.gridTemplateRows = `repeat(${h}, 28px)`;
+
+    for(let y=0;y<h;y++){
+      for(let x=0;x<w;x++){
+        const d = document.createElement("div");
+        d.className = "cell";
+        const v = mat[y][x];
+        if(interactive){
+          if(v>0.5) d.classList.add("on");
+          d.addEventListener("pointerdown", (e)=>{
+            e.preventDefault();
+            isDown = true;
+            input[y][x] = input[y][x] ? 0 : 1;
+            renderDemo();
+          });
+          d.addEventListener("pointerenter", (e)=>{
+            if(!isDown) return;
+            input[y][x] = 1;
+            renderDemo();
+          });
+        }else{
+          // display intensity
+          d.style.background = `rgba(122,167,255, ${0.10 + 0.75*v})`;
+          d.style.borderColor = `rgba(122,167,255, ${0.12 + 0.55*v})`;
+        }
+        d.dataset.y = y; d.dataset.x = x;
+        container.appendChild(d);
+      }
+    }
+  }
+
+  window.addEventListener("pointerup", ()=>{ isDown=false; });
+
+  function clearHighlights(){
+    document.querySelectorAll(".hl").forEach(el=>el.classList.remove("hl"));
+    document.querySelectorAll(".outHL").forEach(el=>el.classList.remove("outHL"));
+  }
+
+  function highlightPatch(pad, outH, outW, idx){
+    // idx maps to (oy,ox) in conv output
+    const oy = Math.floor(idx / outW);
+    const ox = idx % outW;
+
+    // highlight output cell
+    const outCells = [...convGrid.querySelectorAll(".cell")];
+    const outIndex = oy*outW + ox;
+    if(outCells[outIndex]) outCells[outIndex].classList.add("outHL");
+
+    // highlight corresponding 3x3 patch in input (taking pad into account)
+    // For SAME(pad=1), conv "sees" padded area; we highlight the overlapped cells within original input.
+    const k = 3;
+    for(let dy=0;dy<k;dy++){
+      for(let dx=0;dx<k;dx++){
+        const iy = oy + dy - pad;
+        const ix = ox + dx - pad;
+        if(iy>=0 && iy<N && ix>=0 && ix<N){
+          const inCells = [...inGrid.querySelectorAll(".cell")];
+          const inIndex = iy*N + ix;
+          if(inCells[inIndex]) inCells[inIndex].classList.add("hl");
+        }
+      }
+    }
+  }
+
+  function renderDemo(keepSlider=false){
+    // Build input grid (interactive)
+    buildGrid(inGrid, input, true);
+
+    const ker = getKernel(kernelSel.value);
+    const { out: convOut, p } = conv2D(input, ker, demoPad.value);
+
+    const outH = convOut.length, outW = convOut[0].length;
+
+    // slider update
+    const maxIdx = outH*outW - 1;
+    posSlider.max = Math.max(0, maxIdx);
+    if(!keepSlider) posSlider.value = "0";
+    const idx = clamp(int(posSlider.value), 0, maxIdx);
+
+    // display conv normalized
+    buildGrid(convGrid, normalizeForDisplay(convOut), false);
+
+    // pool 2x2
+    const poolOut = maxPool2D(convOut, 2, 2);
+    buildGrid(poolGrid, normalizeForDisplay(poolOut), false);
+
+    clearHighlights();
+    if(maxIdx >= 0) highlightPatch(p, outH, outW, idx);
+
+    demoInfo.innerHTML = `
+      <b>Conv 출력 크기:</b> <span class="mono">${outH}×${outW}</span> (패딩: ${demoPad.value})<br/>
+      <b>MaxPool(2×2, stride 2) 출력 크기:</b> <span class="mono">${poolOut.length}×${poolOut[0].length}</span><br/>
+      <span class="note">슬라이더 위치의 출력 칸을 계산할 때, 입력에서 보는 3×3 영역이 노란색으로 표시됩니다.</span>
+    `;
+  }
+
+  // Init
+  computeAndRender();
+  renderDemo();
+</script>
+</body>
+</html>
